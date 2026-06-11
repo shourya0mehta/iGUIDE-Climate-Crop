@@ -1,0 +1,19 @@
+# Data files
+*.csv
+*.h5
+*.grib2
+data/raw/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.ipynb_checkpoints/
+
+# Environment
+.env
+*.egg-info/
+dist/
+
+# OS
+.DS_Store
