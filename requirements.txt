@@ -1,0 +1,6 @@
+torch
+learn2learn==0.2.0
+scikit-learn
+pandas
+numpy
+requests

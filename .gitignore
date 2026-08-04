@@ -1,5 +1,6 @@
 # Data files
 *.csv
+!results/*.csv
 *.h5
 *.grib2
 data/raw/
@@ -12,6 +13,7 @@ __pycache__/
 
 # Environment
 .env
+.venv/
 *.egg-info/
 dist/
 
