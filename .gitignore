@@ -1,6 +1,7 @@
 # Data files
 *.csv
 !results/*.csv
+!results/**/*.csv
 *.h5
 *.grib2
 data/raw/

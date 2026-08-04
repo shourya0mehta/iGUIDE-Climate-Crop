@@ -32,7 +32,7 @@ from sklearn.preprocessing import StandardScaler
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
-from models.baselines import FEATURE_COLS, TARGET_COL, REGION_COL, MLP  # noqa: E402
+from models.baselines import TARGET_COL, REGION_COL, MLP  # noqa: E402
 from models.ccpa import CCPA, CCPANoClimate  # noqa: E402
 from training.maml_trainer import meta_train, adapt_and_predict  # noqa: E402
 
@@ -56,6 +56,11 @@ FINETUNE_STEPS = 10      # mlp_finetune uses the same SGD(lr=INNER_LR) budget as
 METHOD_ORDER = ["ridge", "mlp", "ridge_support_only", "ridge_refit",
                 "mlp_finetune", "ccpa_no_climate", "ccpa"]
 
+# Feature columns are inferred: everything not in this list. Overridable
+# with --features for ad-hoc subsets.
+NON_FEATURE_COLS = ["fips", "state_name", "county_name", "year",
+                    "yield_bu_acre", "state", "region"]
+
 DISPLAY_NAMES = {
     "Heartland": "Heartland",
     "Northern Crescent": "N.Crescent",
@@ -73,17 +78,34 @@ def set_seed(seed):
     torch.manual_seed(seed)
 
 
-def load_data(path):
+def load_data(path, features_arg=None):
+    """Load the dataset and return (df, feature_cols).
+
+    Features default to every column not in NON_FEATURE_COLS, in file order;
+    pass a comma-separated `features_arg` to override.
+    """
     p = Path(path)
     if not p.exists():
         sys.exit("error: data file not found: %s\n"
-                 "Expected master_dataset.csv with columns %s, '%s', '%s'."
-                 % (p.resolve(), FEATURE_COLS, TARGET_COL, REGION_COL))
+                 "Expected a master dataset with '%s' and '%s' columns."
+                 % (p.resolve(), TARGET_COL, REGION_COL))
     df = pd.read_csv(p)
-    needed = FEATURE_COLS + [TARGET_COL, REGION_COL]
-    missing = [c for c in needed if c not in df.columns]
+    missing = [c for c in (TARGET_COL, REGION_COL) if c not in df.columns]
     if missing:
         sys.exit("error: data file is missing columns: %s" % missing)
+    if features_arg:
+        features = [c.strip() for c in features_arg.split(",") if c.strip()]
+        missing = [c for c in features if c not in df.columns]
+        if missing:
+            sys.exit("error: --features not present in data: %s" % missing)
+    else:
+        features = [c for c in df.columns if c not in NON_FEATURE_COLS]
+    if not features:
+        sys.exit("error: no feature columns inferred from %s" % list(df.columns))
+    non_numeric = [c for c in features if not pd.api.types.is_numeric_dtype(df[c])]
+    if non_numeric:
+        sys.exit("error: non-numeric feature columns: %s" % non_numeric)
+    needed = features + [TARGET_COL, REGION_COL]
     if df[needed].isna().any().any():
         sys.exit("error: nulls found in feature/target/region columns")
     counts = df[REGION_COL].value_counts()
@@ -93,7 +115,7 @@ def load_data(path):
     if counts.min() <= SUPPORT_SIZE:
         sys.exit("error: smallest region (n=%d) does not exceed support size %d"
                  % (counts.min(), SUPPORT_SIZE))
-    return df
+    return df, features
 
 
 def predict_torch(model, X):
@@ -136,7 +158,7 @@ def finetune_mlp(model, support_X, support_y):
     return tuned
 
 
-def run_fold(df, held_out, fold_idx, seed, meta_epochs):
+def run_fold(df, features, held_out, fold_idx, seed, meta_epochs):
     """Evaluate all seven methods on one (seed, held-out region) fold.
 
     Returns a list of result-row dicts (one per method).
@@ -153,7 +175,7 @@ def run_fold(df, held_out, fold_idx, seed, meta_epochs):
         "fold %s: bad training-region set %s" % (held_out, train_regions)
 
     # --- Bug-2 guard: scaler and target stats fit on training regions only
-    scaler = StandardScaler().fit(train_df[FEATURE_COLS].values)
+    scaler = StandardScaler().fit(train_df[features].values)
     assert int(np.asarray(scaler.n_samples_seen_).ravel()[0]) == len(train_df), \
         "scaler saw %s samples, expected %d" % (scaler.n_samples_seen_, len(train_df))
     y_mu = float(train_df[TARGET_COL].mean())
@@ -166,9 +188,9 @@ def run_fold(df, held_out, fold_idx, seed, meta_epochs):
     query_idx = idx[SUPPORT_SIZE:]
     split_checksum = hashlib.sha1(query_idx.tobytes()).hexdigest()
 
-    X_train = scaler.transform(train_df[FEATURE_COLS].values).astype(np.float32)
+    X_train = scaler.transform(train_df[features].values).astype(np.float32)
     y_train_z = ((train_df[TARGET_COL].values - y_mu) / y_sd).astype(np.float32)
-    X_test = scaler.transform(test_df[FEATURE_COLS].values).astype(np.float32)
+    X_test = scaler.transform(test_df[features].values).astype(np.float32)
     y_test_raw = test_df[TARGET_COL].values.astype(np.float64)
 
     X_sup = X_test[support_idx]
@@ -218,7 +240,7 @@ def run_fold(df, held_out, fold_idx, seed, meta_epochs):
     # 6-7. MAML-trained CCPA ablation and full CCPA
     region_tensors = {}
     for r, g in train_df.groupby(REGION_COL):
-        Xr = scaler.transform(g[FEATURE_COLS].values).astype(np.float32)
+        Xr = scaler.transform(g[features].values).astype(np.float32)
         yr = ((g[TARGET_COL].values - y_mu) / y_sd).astype(np.float32)
         region_tensors[r] = (torch.from_numpy(Xr), torch.from_numpy(yr))
     maml_regions = set(region_tensors)
@@ -227,7 +249,7 @@ def run_fold(df, held_out, fold_idx, seed, meta_epochs):
 
     for method, model_cls in [("ccpa_no_climate", CCPANoClimate), ("ccpa", CCPA)]:
         set_seed(seed)  # same init stream for both models
-        model = model_cls(input_dim=len(FEATURE_COLS))
+        model = model_cls(input_dim=len(features))
         maml = meta_train(
             model, region_tensors, epochs=meta_epochs,
             inner_lr=INNER_LR, outer_lr=OUTER_LR,
@@ -322,9 +344,15 @@ def main(argv=None):
     ap.add_argument("--out", default="results/")
     ap.add_argument("--meta-epochs", type=int, default=META_EPOCHS,
                     help="lower only for quick plumbing checks (default %d)" % META_EPOCHS)
+    ap.add_argument("--features", default=None,
+                    help="comma-separated feature columns; default: every column "
+                         "not in %s" % NON_FEATURE_COLS)
     args = ap.parse_args(argv)
 
-    df = load_data(args.data)
+    df, features = load_data(args.data, args.features)
+    print("features (%d): %s" % (len(features),
+          ", ".join(features) if len(features) <= 8
+          else ", ".join(features[:6]) + ", ... +%d more" % (len(features) - 6)))
     region_order = df[REGION_COL].value_counts().index.tolist()  # largest first
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -333,7 +361,8 @@ def main(argv=None):
     rows = []
     for seed in args.seeds:
         for fold_idx, held_out in enumerate(region_order):
-            rows.extend(run_fold(df, held_out, fold_idx, seed, args.meta_epochs))
+            rows.extend(run_fold(df, features, held_out, fold_idx, seed,
+                                 args.meta_epochs))
 
     raw = pd.DataFrame(rows, columns=["seed", "held_out_region", "method",
                                       "r2", "rmse", "n_query"])
