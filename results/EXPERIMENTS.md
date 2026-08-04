@@ -17,20 +17,29 @@ Every transfer method improved substantially, but `ridge_support_only` got
 *worse*, and roughly half the closed gap comes from that degradation rather than
 from better transfer.
 
-**(b) Does CCPA's advantage widen as support shrinks? No.** On 5 features the
-`ccpa` - `mlp_finetune` gap is flat-to-slightly-favorable at small support
-(-0.016 at s=8 vs -0.097 at s=64) — directionally consistent with the
-hypothesis, but the effect is far inside seed noise and `ccpa` never leads.
+**(b) Does CCPA's advantage widen as support shrinks? On monthly features the
+macro numbers say yes — but the effect is one region, not a general law.** The
+`ccpa` - `mlp_finetune` macro gap grows monotonically as labels get scarcer
+(+0.037 at s=64, +0.069 at s=32, +0.142 at s=16, +0.196 at s=8). That is
+exactly the predicted shape. However, excluding Basin & Range (n_query=35,
+flagged noisy) the sign flips and `ccpa` loses at every support size. The
+trend is real but it is carried by the single smallest, most climatically
+distinct region. On 5 features there is no such trend at all.
 
-**(c) Does anything beat `ridge_support_only`? Yes, on monthly features.**
-`mlp_finetune` (-0.139) and `ccpa` (-0.149) both edge past it (-0.161) on macro
-R^2, reversing the 5-feature result where nothing did.
+**(c) Does anything beat `ridge_support_only`? Yes — decisively, once labels are
+scarce.** On monthly features at s=32, `mlp_finetune` (-0.139) and `ccpa`
+(-0.149) edge past it (-0.161) in the main run. The sweep makes the effect much
+larger: at s=8, `ccpa` (-0.268) and `mlp_finetune` (-0.465) both crush
+`ridge_support_only` (-0.814), and the local-only baseline only retakes the
+lead at s=64 (+0.118). **The strongest defensible claim in this work is the
+label-efficiency one: transfer wins when local labels are scarce, and the
+crossover is around 32-64 samples.**
 
-The paper's central claim — CCPA as the architectural fix for geographic
-transfer — is still not supported. `ccpa` and `mlp_finetune` are
-statistically indistinguishable on monthly features; a meta-learned
-initialization is not buying anything a conventionally trained MLP with the
-same 10-step adaptation does not already provide.
+The paper's original central claim — CCPA as *the* architectural fix for
+geographic transfer — is still not supported. `ccpa` and `mlp_finetune` are
+statistically indistinguishable in aggregate; a meta-learned initialization is
+not buying anything a conventionally trained MLP with the same 10-step
+adaptation does not already provide, except on Basin & Range.
 
 ---
 
@@ -154,11 +163,54 @@ adaptive neural methods are nearly flat in support size — they are not
 converting extra local labels into accuracy, which is its own finding about the
 10-step adaptation budget.
 
+### 35-feature monthly sweep — macro R^2
+
+| method | s=8 | s=16 | s=32 | s=64 |
+|---|---|---|---|---|
+| `ridge_support_only` | -0.814 | -0.520 | -0.192 | **+0.118** |
+| `ridge_refit` | -6.077 | -5.181 | -4.006 | -2.631 |
+| `mlp_finetune` | -0.465 | -0.352 | -0.293 | -0.227 |
+| `ccpa_no_climate` | -0.488 | -0.447 | -0.434 | -0.408 |
+| `ccpa` | **-0.268** | **-0.210** | **-0.223** | -0.190 |
+
+Reference lines: `ridge` -7.249, `mlp` -3.354.
+
+Here `ccpa` leads at every support size, and the margin over `mlp_finetune`
+widens monotonically as support shrinks: +0.037, +0.069, +0.142, +0.196 going
+from s=64 down to s=8 (per-seed wins 3/5, 4/5, 4/5, 4/5). Taken at face value
+this is the scarce-label advantage the meta-learning story predicts.
+
+**The caveat that must go in the paper.** The macro mean is not robust here.
+Per (seed, region) cell, `ccpa` wins only 19/30 at s=8 and 10-11/30 at larger
+sizes, and the *median* cell delta is negative at s=16/32/64. Excluding Basin &
+Range, `ccpa` loses to `mlp_finetune` at every support size (-0.005, -0.038,
+-0.060, -0.063). The entire macro advantage comes from Basin & Range, where the
+delta is +1.202 at s=8 — one region with 35 query rows. Region-by-region, `ccpa`
+wins Basin & Range and Northern Crescent and loses Heartland, Northern Great
+Plains, Prairie Gateway.
+
+The two runs also disagree at s=32 because they score different query sets (the
+main run keeps rows after index 32, the sweep pins the query to rows after index
+64): main gives `ccpa` - `mlp_finetune` = -0.011, sweep gives +0.069. Both are
+internally valid; the disagreement itself shows the aggregate difference is
+inside the noise floor. The *trend across support sizes* is the trustworthy part
+of the sweep, since all four points share one query set by construction.
+
+Honest summary for (b): CCPA's advantage widens as labels shrink **on the
+smallest and most climatically distinct region**, and that is a publishable,
+specific claim. It is not a general property across regions.
+
 ### Figures
 
 - `results/figures/support_sweep.{pdf,png}` — single-column macro R^2 vs support
   size, +-1 std bands, dashed/dotted zero-support references, labeled R^2 = 0 line.
 - `results/figures/support_sweep_by_region.{pdf,png}` — 2x3 per-region facets.
+- `_monthly` variants of both for the 35-feature sweep.
+
+On monthly features `ridge_refit` and the zero-support references run to -7,
+which would compress every informative series into a sliver, so the y-range is
+set from the informative methods and off-scale series are named in a footnote
+inside the axes rather than silently cropped.
 
 Colors are the validated categorical palette in fixed slot order (validator:
 all checks pass, light mode); the three hues below 3:1 contrast carry direct

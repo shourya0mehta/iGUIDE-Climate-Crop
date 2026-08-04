@@ -72,6 +72,38 @@ def style_axis(ax):
         ax.spines[side].set_visible(False)
 
 
+# ridge_refit and the zero-support references run so far negative on monthly
+# features that including them would compress every other series into a sliver.
+# The y-range is set from the informative methods and anything outside is named
+# in a footnote rather than silently cropped.
+FOCUS = ["ridge_support_only", "mlp_finetune", "ccpa_no_climate", "ccpa"]
+
+
+def focus_ylim(stats, refs, pad=0.12):
+    f = stats[stats["method"].isin(FOCUS)]
+    lo = float((f["mean"] - f["std"].fillna(0)).min())
+    hi = float((f["mean"] + f["std"].fillna(0)).max())
+    hi = max(hi, 0.02)  # always show the R^2 = 0 line
+    span = hi - lo
+    return lo - pad * span, hi + pad * span
+
+
+def offscale_note(ax, stats, refs, lo):
+    """Name any series whose whole curve sits below the visible range."""
+    names = []
+    for method, _, _, _ in SERIES:
+        if method in FOCUS:
+            continue
+        s = stats[stats["method"] == method]
+        if not s.empty and float(s["mean"].max()) < lo:
+            names.append(method)
+    names += [m for m, v in refs.items() if v < lo]
+    if names:
+        ax.annotate("below axis: " + ", ".join(names),
+                    xy=(0.5, 0.012), xycoords="axes fraction", ha="center",
+                    fontsize=5.8, color=TEXT_SECONDARY)
+
+
 def draw_panel(ax, stats, refs, zero_label=False, direct_labels=False,
                band=True, lw=1.6, ms=3.6):
     ax.axhline(0, color=ZERO_COLOR, linewidth=0.8, zorder=1)
@@ -105,17 +137,22 @@ def place_end_labels(ax, ends, x=SIZES[-1]):
     if not ends:
         return
     lo, hi = ax.get_ylim()
-    gap = (hi - lo) * 0.055
+    gap = (hi - lo) * 0.095  # ~1 label height at this figure size
     ends = sorted(ends)
     ys = [ends[0][0]]
     for y, _, _ in ends[1:]:
         ys.append(max(y, ys[-1] + gap))
     for (y0, method, color), y in zip(ends, ys):
-        ax.annotate(method, xy=(x, y0), xytext=(5, 0),
+        # Anchor at the nudged y (not y0) so the collision spacing is what
+        # actually gets drawn; a leader line ties it back to the data point.
+        ax.annotate(method, xy=(x, y), xytext=(5, 0),
                     textcoords="offset points", va="center", fontsize=6.5,
                     color=TEXT_PRIMARY,
                     bbox=dict(boxstyle="round,pad=0.15", fc="white",
                               ec=color, lw=0.7))
+        if abs(y - y0) > 1e-9:
+            ax.plot([x, x], [y0, y], color=color, linewidth=0.6,
+                    alpha=0.55, zorder=3)
 
 
 def legend_handles(refs_present):
@@ -154,6 +191,9 @@ def main():
     ax.set_xlabel("Support size (labeled samples from held-out region)")
     ax.set_ylabel("Macro R² (mean ± 1 std, %d seeds)" % n_seeds)
     ax.set_xlim(SIZES[0] * 0.9, SIZES[-1] * 1.6)  # room for end labels
+    lo, hi = focus_ylim(stats, ref_macro)
+    ax.set_ylim(lo, hi)
+    offscale_note(ax, stats, ref_macro, lo)
     place_end_labels(ax, ends)
     ax.legend(handles=legend_handles(ref_macro), loc="lower right",
               frameon=False, handlelength=1.8, labelspacing=0.35)
@@ -171,9 +211,12 @@ def main():
     fig, axes = plt.subplots(2, 3, figsize=(7.0, 4.4), constrained_layout=True)
     for ax, (region, nq) in zip(axes.ravel(), regions.items()):
         refs = ref_region.loc[region].to_dict()
-        draw_panel(ax, rstats[rstats["held_out_region"] == region], refs,
-                   lw=1.3, ms=3.0)
+        rs = rstats[rstats["held_out_region"] == region]
+        draw_panel(ax, rs, refs, lw=1.3, ms=3.0)
         style_axis(ax)
+        lo, hi = focus_ylim(rs, refs)
+        ax.set_ylim(lo, hi)
+        offscale_note(ax, rs, refs, lo)
         flag = ", noisy" if nq < 100 else ""
         ax.set_title("%s  (query n=%d%s)" % (region, nq, flag), fontsize=7.5)
     for ax in axes[1]:
