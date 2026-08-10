@@ -1,0 +1,241 @@
+seed,held_out_region,method,support_size,alpha
+0,Southern Seaboard,ridge_support_only,8,10000.0
+0,Southern Seaboard,ridge_refit,8,1.7782794100389228
+0,Southern Seaboard,ridge_support_only,16,10000.0
+0,Southern Seaboard,ridge_refit,16,1.7782794100389228
+0,Southern Seaboard,ridge_support_only,32,316.22776601683796
+0,Southern Seaboard,ridge_refit,32,1.7782794100389228
+0,Southern Seaboard,ridge_support_only,64,177.82794100389228
+0,Southern Seaboard,ridge_refit,64,1.7782794100389228
+0,Northern Crescent,ridge_support_only,8,177.82794100389228
+0,Northern Crescent,ridge_refit,8,1.7782794100389228
+0,Northern Crescent,ridge_support_only,16,17.78279410038923
+0,Northern Crescent,ridge_refit,16,1.7782794100389228
+0,Northern Crescent,ridge_support_only,32,31.622776601683793
+0,Northern Crescent,ridge_refit,32,1.7782794100389228
+0,Northern Crescent,ridge_support_only,64,17.78279410038923
+0,Northern Crescent,ridge_refit,64,1.0
+0,Heartland,ridge_support_only,8,3.1622776601683795
+0,Heartland,ridge_refit,8,1.7782794100389228
+0,Heartland,ridge_support_only,16,0.01
+0,Heartland,ridge_refit,16,1.7782794100389228
+0,Heartland,ridge_support_only,32,3.1622776601683795
+0,Heartland,ridge_refit,32,1.7782794100389228
+0,Heartland,ridge_support_only,64,10.0
+0,Heartland,ridge_refit,64,1.7782794100389228
+0,Northern Great Plains,ridge_support_only,8,10000.0
+0,Northern Great Plains,ridge_refit,8,1.7782794100389228
+0,Northern Great Plains,ridge_support_only,16,10000.0
+0,Northern Great Plains,ridge_refit,16,1.7782794100389228
+0,Northern Great Plains,ridge_support_only,32,0.01778279410038923
+0,Northern Great Plains,ridge_refit,32,1.7782794100389228
+0,Northern Great Plains,ridge_support_only,64,1.7782794100389228
+0,Northern Great Plains,ridge_refit,64,1.7782794100389228
+0,Prairie Gateway,ridge_support_only,8,31.622776601683793
+0,Prairie Gateway,ridge_refit,8,3.1622776601683795
+0,Prairie Gateway,ridge_support_only,16,31.622776601683793
+0,Prairie Gateway,ridge_refit,16,3.1622776601683795
+0,Prairie Gateway,ridge_support_only,32,31.622776601683793
+0,Prairie Gateway,ridge_refit,32,3.1622776601683795
+0,Prairie Gateway,ridge_support_only,64,31.622776601683793
+0,Prairie Gateway,ridge_refit,64,3.1622776601683795
+0,Basin and Range,ridge_support_only,8,56.23413251903491
+0,Basin and Range,ridge_refit,8,1.0
+0,Basin and Range,ridge_support_only,16,1.7782794100389228
+0,Basin and Range,ridge_refit,16,1.0
+0,Basin and Range,ridge_support_only,32,5.623413251903491
+0,Basin and Range,ridge_refit,32,1.7782794100389228
+0,Basin and Range,ridge_support_only,64,10.0
+0,Basin and Range,ridge_refit,64,1.7782794100389228
+1,Southern Seaboard,ridge_support_only,8,31.622776601683793
+1,Southern Seaboard,ridge_refit,8,1.7782794100389228
+1,Southern Seaboard,ridge_support_only,16,1.7782794100389228
+1,Southern Seaboard,ridge_refit,16,1.7782794100389228
+1,Southern Seaboard,ridge_support_only,32,5.623413251903491
+1,Southern Seaboard,ridge_refit,32,1.7782794100389228
+1,Southern Seaboard,ridge_support_only,64,0.1778279410038923
+1,Southern Seaboard,ridge_refit,64,1.7782794100389228
+1,Northern Crescent,ridge_support_only,8,3.1622776601683795
+1,Northern Crescent,ridge_refit,8,1.0
+1,Northern Crescent,ridge_support_only,16,17.78279410038923
+1,Northern Crescent,ridge_refit,16,1.0
+1,Northern Crescent,ridge_support_only,32,1.0
+1,Northern Crescent,ridge_refit,32,1.7782794100389228
+1,Northern Crescent,ridge_support_only,64,31.622776601683793
+1,Northern Crescent,ridge_refit,64,1.7782794100389228
+1,Heartland,ridge_support_only,8,10000.0
+1,Heartland,ridge_refit,8,1.7782794100389228
+1,Heartland,ridge_support_only,16,0.5623413251903491
+1,Heartland,ridge_refit,16,1.7782794100389228
+1,Heartland,ridge_support_only,32,5.623413251903491
+1,Heartland,ridge_refit,32,1.7782794100389228
+1,Heartland,ridge_support_only,64,10.0
+1,Heartland,ridge_refit,64,1.7782794100389228
+1,Northern Great Plains,ridge_support_only,8,17.78279410038923
+1,Northern Great Plains,ridge_refit,8,1.7782794100389228
+1,Northern Great Plains,ridge_support_only,16,10000.0
+1,Northern Great Plains,ridge_refit,16,1.7782794100389228
+1,Northern Great Plains,ridge_support_only,32,100.0
+1,Northern Great Plains,ridge_refit,32,1.7782794100389228
+1,Northern Great Plains,ridge_support_only,64,3.1622776601683795
+1,Northern Great Plains,ridge_refit,64,1.7782794100389228
+1,Prairie Gateway,ridge_support_only,8,0.01
+1,Prairie Gateway,ridge_refit,8,3.1622776601683795
+1,Prairie Gateway,ridge_support_only,16,0.01
+1,Prairie Gateway,ridge_refit,16,3.1622776601683795
+1,Prairie Gateway,ridge_support_only,32,177.82794100389228
+1,Prairie Gateway,ridge_refit,32,3.1622776601683795
+1,Prairie Gateway,ridge_support_only,64,31.622776601683793
+1,Prairie Gateway,ridge_refit,64,3.1622776601683795
+1,Basin and Range,ridge_support_only,8,562.341325190349
+1,Basin and Range,ridge_refit,8,1.0
+1,Basin and Range,ridge_support_only,16,0.01
+1,Basin and Range,ridge_refit,16,1.0
+1,Basin and Range,ridge_support_only,32,5.623413251903491
+1,Basin and Range,ridge_refit,32,1.7782794100389228
+1,Basin and Range,ridge_support_only,64,10.0
+1,Basin and Range,ridge_refit,64,1.7782794100389228
+2,Southern Seaboard,ridge_support_only,8,10000.0
+2,Southern Seaboard,ridge_refit,8,1.7782794100389228
+2,Southern Seaboard,ridge_support_only,16,10000.0
+2,Southern Seaboard,ridge_refit,16,1.7782794100389228
+2,Southern Seaboard,ridge_support_only,32,100.0
+2,Southern Seaboard,ridge_refit,32,1.7782794100389228
+2,Southern Seaboard,ridge_support_only,64,10.0
+2,Southern Seaboard,ridge_refit,64,1.7782794100389228
+2,Northern Crescent,ridge_support_only,8,17.78279410038923
+2,Northern Crescent,ridge_refit,8,1.7782794100389228
+2,Northern Crescent,ridge_support_only,16,17.78279410038923
+2,Northern Crescent,ridge_refit,16,1.7782794100389228
+2,Northern Crescent,ridge_support_only,32,17.78279410038923
+2,Northern Crescent,ridge_refit,32,1.7782794100389228
+2,Northern Crescent,ridge_support_only,64,10.0
+2,Northern Crescent,ridge_refit,64,1.0
+2,Heartland,ridge_support_only,8,100.0
+2,Heartland,ridge_refit,8,1.7782794100389228
+2,Heartland,ridge_support_only,16,17.78279410038923
+2,Heartland,ridge_refit,16,1.7782794100389228
+2,Heartland,ridge_support_only,32,100.0
+2,Heartland,ridge_refit,32,1.7782794100389228
+2,Heartland,ridge_support_only,64,31.622776601683793
+2,Heartland,ridge_refit,64,1.7782794100389228
+2,Northern Great Plains,ridge_support_only,8,0.01
+2,Northern Great Plains,ridge_refit,8,1.7782794100389228
+2,Northern Great Plains,ridge_support_only,16,1.0
+2,Northern Great Plains,ridge_refit,16,1.7782794100389228
+2,Northern Great Plains,ridge_support_only,32,56.23413251903491
+2,Northern Great Plains,ridge_refit,32,1.7782794100389228
+2,Northern Great Plains,ridge_support_only,64,17.78279410038923
+2,Northern Great Plains,ridge_refit,64,1.7782794100389228
+2,Prairie Gateway,ridge_support_only,8,10000.0
+2,Prairie Gateway,ridge_refit,8,3.1622776601683795
+2,Prairie Gateway,ridge_support_only,16,17.78279410038923
+2,Prairie Gateway,ridge_refit,16,3.1622776601683795
+2,Prairie Gateway,ridge_support_only,32,100.0
+2,Prairie Gateway,ridge_refit,32,3.1622776601683795
+2,Prairie Gateway,ridge_support_only,64,177.82794100389228
+2,Prairie Gateway,ridge_refit,64,3.1622776601683795
+2,Basin and Range,ridge_support_only,8,10.0
+2,Basin and Range,ridge_refit,8,1.0
+2,Basin and Range,ridge_support_only,16,316.22776601683796
+2,Basin and Range,ridge_refit,16,1.7782794100389228
+2,Basin and Range,ridge_support_only,32,10.0
+2,Basin and Range,ridge_refit,32,1.7782794100389228
+2,Basin and Range,ridge_support_only,64,31.622776601683793
+2,Basin and Range,ridge_refit,64,1.7782794100389228
+3,Southern Seaboard,ridge_support_only,8,0.5623413251903491
+3,Southern Seaboard,ridge_refit,8,1.7782794100389228
+3,Southern Seaboard,ridge_support_only,16,56.23413251903491
+3,Southern Seaboard,ridge_refit,16,1.7782794100389228
+3,Southern Seaboard,ridge_support_only,32,1778.2794100389228
+3,Southern Seaboard,ridge_refit,32,1.7782794100389228
+3,Southern Seaboard,ridge_support_only,64,562.341325190349
+3,Southern Seaboard,ridge_refit,64,1.7782794100389228
+3,Northern Crescent,ridge_support_only,8,0.01
+3,Northern Crescent,ridge_refit,8,1.0
+3,Northern Crescent,ridge_support_only,16,0.01
+3,Northern Crescent,ridge_refit,16,1.7782794100389228
+3,Northern Crescent,ridge_support_only,32,10.0
+3,Northern Crescent,ridge_refit,32,1.7782794100389228
+3,Northern Crescent,ridge_support_only,64,10.0
+3,Northern Crescent,ridge_refit,64,1.7782794100389228
+3,Heartland,ridge_support_only,8,10000.0
+3,Heartland,ridge_refit,8,1.7782794100389228
+3,Heartland,ridge_support_only,16,1000.0
+3,Heartland,ridge_refit,16,1.7782794100389228
+3,Heartland,ridge_support_only,32,56.23413251903491
+3,Heartland,ridge_refit,32,1.7782794100389228
+3,Heartland,ridge_support_only,64,31.622776601683793
+3,Heartland,ridge_refit,64,1.7782794100389228
+3,Northern Great Plains,ridge_support_only,8,0.01
+3,Northern Great Plains,ridge_refit,8,1.7782794100389228
+3,Northern Great Plains,ridge_support_only,16,562.341325190349
+3,Northern Great Plains,ridge_refit,16,1.7782794100389228
+3,Northern Great Plains,ridge_support_only,32,3.1622776601683795
+3,Northern Great Plains,ridge_refit,32,1.7782794100389228
+3,Northern Great Plains,ridge_support_only,64,1.7782794100389228
+3,Northern Great Plains,ridge_refit,64,1.7782794100389228
+3,Prairie Gateway,ridge_support_only,8,1778.2794100389228
+3,Prairie Gateway,ridge_refit,8,3.1622776601683795
+3,Prairie Gateway,ridge_support_only,16,10000.0
+3,Prairie Gateway,ridge_refit,16,3.1622776601683795
+3,Prairie Gateway,ridge_support_only,32,31.622776601683793
+3,Prairie Gateway,ridge_refit,32,3.1622776601683795
+3,Prairie Gateway,ridge_support_only,64,56.23413251903491
+3,Prairie Gateway,ridge_refit,64,3.1622776601683795
+3,Basin and Range,ridge_support_only,8,3.1622776601683795
+3,Basin and Range,ridge_refit,8,1.0
+3,Basin and Range,ridge_support_only,16,100.0
+3,Basin and Range,ridge_refit,16,1.7782794100389228
+3,Basin and Range,ridge_support_only,32,177.82794100389228
+3,Basin and Range,ridge_refit,32,1.7782794100389228
+3,Basin and Range,ridge_support_only,64,31.622776601683793
+3,Basin and Range,ridge_refit,64,1.7782794100389228
+4,Southern Seaboard,ridge_support_only,8,1.7782794100389228
+4,Southern Seaboard,ridge_refit,8,1.7782794100389228
+4,Southern Seaboard,ridge_support_only,16,10.0
+4,Southern Seaboard,ridge_refit,16,1.7782794100389228
+4,Southern Seaboard,ridge_support_only,32,56.23413251903491
+4,Southern Seaboard,ridge_refit,32,1.7782794100389228
+4,Southern Seaboard,ridge_support_only,64,0.05623413251903491
+4,Southern Seaboard,ridge_refit,64,1.7782794100389228
+4,Northern Crescent,ridge_support_only,8,0.03162277660168379
+4,Northern Crescent,ridge_refit,8,1.0
+4,Northern Crescent,ridge_support_only,16,5.623413251903491
+4,Northern Crescent,ridge_refit,16,1.0
+4,Northern Crescent,ridge_support_only,32,3.1622776601683795
+4,Northern Crescent,ridge_refit,32,1.0
+4,Northern Crescent,ridge_support_only,64,10.0
+4,Northern Crescent,ridge_refit,64,1.0
+4,Heartland,ridge_support_only,8,10000.0
+4,Heartland,ridge_refit,8,1.7782794100389228
+4,Heartland,ridge_support_only,16,56.23413251903491
+4,Heartland,ridge_refit,16,1.7782794100389228
+4,Heartland,ridge_support_only,32,0.01778279410038923
+4,Heartland,ridge_refit,32,1.7782794100389228
+4,Heartland,ridge_support_only,64,3.1622776601683795
+4,Heartland,ridge_refit,64,1.7782794100389228
+4,Northern Great Plains,ridge_support_only,8,177.82794100389228
+4,Northern Great Plains,ridge_refit,8,1.7782794100389228
+4,Northern Great Plains,ridge_support_only,16,10.0
+4,Northern Great Plains,ridge_refit,16,1.7782794100389228
+4,Northern Great Plains,ridge_support_only,32,0.31622776601683794
+4,Northern Great Plains,ridge_refit,32,1.7782794100389228
+4,Northern Great Plains,ridge_support_only,64,1.0
+4,Northern Great Plains,ridge_refit,64,1.7782794100389228
+4,Prairie Gateway,ridge_support_only,8,177.82794100389228
+4,Prairie Gateway,ridge_refit,8,3.1622776601683795
+4,Prairie Gateway,ridge_support_only,16,100.0
+4,Prairie Gateway,ridge_refit,16,3.1622776601683795
+4,Prairie Gateway,ridge_support_only,32,56.23413251903491
+4,Prairie Gateway,ridge_refit,32,3.1622776601683795
+4,Prairie Gateway,ridge_support_only,64,5.623413251903491
+4,Prairie Gateway,ridge_refit,64,3.1622776601683795
+4,Basin and Range,ridge_support_only,8,10000.0
+4,Basin and Range,ridge_refit,8,1.0
+4,Basin and Range,ridge_support_only,16,56.23413251903491
+4,Basin and Range,ridge_refit,16,1.0
+4,Basin and Range,ridge_support_only,32,31.622776601683793
+4,Basin and Range,ridge_refit,32,1.0
+4,Basin and Range,ridge_support_only,64,5.623413251903491
+4,Basin and Range,ridge_refit,64,1.7782794100389228

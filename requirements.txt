@@ -1,0 +1,7 @@
+# Analysis / reproduction dependencies (Table 1, figures, shift analyses).
+# Works on Python 3.9+. Training extras are in requirements-train.txt.
+numpy
+pandas
+scipy
+scikit-learn
+matplotlib
