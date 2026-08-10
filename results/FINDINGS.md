@@ -81,24 +81,30 @@ Clim-7 hot southern plains (TX/OK/KS/AR; mean yield 93 bu/acre vs ~157 overall).
 
 Figure: `results/figures/partition_method_heatmap.{pdf,png}`.
 
-Macro R² (equal-weight over held-out folds, mean over 5 seeds):
+**Table 1** — macro R² (equal-weight over held-out folds), mean ± std over 5
+seeds. Tidy version: `results/main_table.csv` (regenerate with
+`python training/make_main_table.py`). Best method per column in bold.
 
-| method | state 5f | ers 5f | clim 5f | state 35f | ers 35f | clim 35f |
+| method | seas. state | seas. ers | seas. clim | mon. state | mon. ers | mon. clim |
 |---|---|---|---|---|---|---|
-| `ridge` | −1.72 | −0.77 | −0.55 | −5.48 | −0.81 | −0.43 |
-| `mlp` | −1.91 | −0.73 | −0.22 | −2.72 | −0.32 | **+0.02** |
-| `ridge_support_only` | +0.04 | +0.09 | −0.04 | +0.01 | +0.11 | −0.11 |
-| `ridge_refit` | −1.41 | −0.74 | −0.50 | −3.00 | −0.66 | −0.31 |
-| `mlp_finetune` | −0.27 | −0.10 | **−0.02** | −0.14 | +0.05 | **+0.19** |
-| `ccpa_no_climate` | −0.56 | −0.48 | −0.25 | −0.30 | +0.01 | +0.10 |
-| `ccpa` | −0.41 | −0.30 | −0.11 | −0.15 | **+0.17** | +0.17 |
+| `ridge` | −1.722 ± .270 | −0.773 ± .006 | −0.553 ± .012 | −5.484 ± 1.078 | −0.810 ± .012 | −0.429 ± .017 |
+| `mlp` | −1.913 ± .496 | −0.725 ± .090 | −0.223 ± .055 | −2.717 ± 1.275 | −0.324 ± .074 | +0.021 ± .063 |
+| `ridge_support_only` | **+0.043 ± .020** | **+0.089 ± .024** | −0.036 ± .035 | **+0.009 ± .182** | +0.113 ± .043 | −0.113 ± .348 |
+| `ridge_refit` | −1.408 ± .223 | −0.740 ± .006 | −0.502 ± .015 | −3.005 ± .653 | −0.657 ± .028 | −0.311 ± .021 |
+| `mlp_finetune` | −0.273 ± .115 | −0.104 ± .029 | **−0.019 ± .022** | −0.139 ± .140 | +0.050 ± .028 | **+0.192 ± .029** |
+| `ccpa_no_climate` | −0.560 ± .172 | −0.477 ± .020 | −0.251 ± .021 | −0.303 ± .075 | +0.008 ± .059 | +0.102 ± .017 |
+| `ccpa` | −0.413 ± .058 | −0.303 ± .042 | −0.111 ± .024 | −0.149 ± .079 | **+0.165 ± .030** | +0.171 ± .028 |
+
+Fold structure the macros average over (n_query at s=32, monthly): state 6
+folds (67–2,649 per fold), ers 8 folds (204–2,741), clim 8 folds (288–2,926);
+full per-fold sizes are printed by `make_main_table.py`.
 
 **2.1 The method ranking flips with the partition.** On monthly features the
 top method is `ridge_support_only` under the state partition (+0.01), **`ccpa`
 under county ERS (+0.17)**, and `mlp_finetune` under climate clusters (+0.19).
-Spearman rank correlation of method orderings between partitions: 0.89
-(state↔ers), 0.64 (state↔clim), 0.71 (ers↔clim) on monthly; 0.75–0.93 on
-seasonal. Even "does anything beat the local-only baseline?" flips: no under
+Spearman rank correlation of method orderings between partitions
+(descriptive, computed on the seed-mean macro table): 0.89 (state↔ers), 0.64
+(state↔clim), 0.71 (ers↔clim) on monthly; 0.75–0.93 on seasonal. Even "does anything beat the local-only baseline?" flips: no under
 state, yes under ers (`ccpa` +0.165 > +0.113) and clim (`mlp_finetune` +0.192,
 `ccpa` +0.171, even zero-shot `mlp` +0.021 > −0.113).
 
@@ -131,7 +137,9 @@ seasonal features ccpa loses under all three (0–1/5 wins). Two things follow:
 (i) correcting the region definitions moved the comparison *in favor* of the
 novel method — the opposite of the usual suspicion; (ii) no partition-free
 claim like "meta-learning fixes geographic transfer" is supportable — the
-defensible statement must name its partition. `ccpa` > `ccpa_no_climate` in
+defensible statement must name its partition. **The 5/5 ERS result is
+evidence of conclusion fragility, not a method win:** the same architecture's
+apparent value appears and disappears with the choice of map. `ccpa` > `ccpa_no_climate` in
 all six runs (gaps +0.069 to +0.174; largest on ers seasonal), so FiLM climate
 conditioning robustly contributes.
 
@@ -140,66 +148,121 @@ conditioning robustly contributes.
 ## 3. Shift decomposition
 
 Figures: `results/figures/shift_vs_transfer.{pdf,png}`,
+`results/figures/efficiency_scatter.{pdf,png}`,
 `results/figures/coef_cosine_heatmap.{pdf,png}`. Per-fold measures:
-`results/shift/shift_measures.csv` (22 folds; monthly features throughout).
+`results/shift/shift_measures.csv`, `results/shift/efficiency_cells.csv`
+(22 folds; monthly features throughout).
 
 Measures per (partition, held-out fold): **energy distance** and **RBF-MMD**
 (median-heuristic) between pool and fold features, standardized by the pool
-scaler (the two agree, r = 0.945 — MMD adds nothing and is not discussed
-further); **1-D Wasserstein** between pool and fold yield distributions
-(bu/acre); **in-region ceiling** = 5-fold CV R² of RidgeCV within the fold
-only; **coefficient cosine** between per-region RidgeCV fits on globally
-standardized features.
+scaler (the two agree, r = 0.95 [0.92, 0.98] across the 22 folds — MMD is
+reported as a robustness check only); **1-D Wasserstein** between pool and
+fold yield distributions (bu/acre); **in-region ceiling** = 5-fold CV R² of
+RidgeCV within the fold only; **coefficient cosine** between per-region
+RidgeCV fits on globally standardized features.
 
-**3.1 A structural premise did not survive measurement.** The design assumed
+**3.1 A caveat before the headline: raw ceiling↔transfer correlation is
+partly mechanical.** Transfer R² and in-region R² share the held-out region's
+yield-variance denominator, so a region with high unexplainable variance
+(management noise, weather-decoupled irrigation) is pushed down on *both*
+axes for the same arithmetic reason. The raw correlation in §3.2 therefore
+overstates how much "intrinsic predictability" explains; §3.3 removes the
+shared-denominator channel by analyzing the ceiling-normalized efficiency
+ratio, and the two must be read together.
+
+**3.2 The raw association.** Response: `mlp_finetune` R² per fold
+(seed-averaged, monthly runs; n = 22). Bootstrap 95% CIs (10k resamples);
+exact two-sided permutation p (10k shuffles, seeded):
+
+| predictor | univariate Pearson [CI] | Spearman | multiple-regression β [CI] |
+|---|---|---|---|
+| energy distance (covariate) | −0.68 [−0.89, +0.01], perm p = 0.007 | −0.22 | −0.38 [−0.62, +0.03] |
+| Wasserstein yield (label) | −0.49 [−0.74, +0.14], perm p = 0.028 | −0.28 | −0.20 [−0.48, +0.11] |
+| in-region ceiling (concept/intrinsic) | **+0.74 [+0.42, +0.89], perm p = 0.0001** | +0.64 (perm p = 0.0016) | **+0.51 [+0.30, +0.76]** |
+
+The in-region ceiling is the only predictor whose CI excludes zero, in the
+univariate and the multiple regression, on both feature sets (seasonal:
+r = +0.81 [+0.59, +0.92], perm p = 0.0001; β = +0.75 [+0.55, +0.94]), and
+under the per-seed cluster bootstrap (n = 110 cells, resampled by region).
+Clipping R² at −2 changes nothing (no response cell is below it). Subject to
+§3.1, this says: *how much* transfer achieves tracks *how much is achievable
+locally*.
+
+**3.3 Ceiling-normalized transfer efficiency (does distance explain the
+rest?).** For each fold, efficiency = transfer R² / ceiling R², computed only
+where ceiling ≥ 0.05 (the ratio is meaningless near zero; negative efficiency
+is allowed and means transfer is actively harmful where local prediction
+works). **Zero of the 22 cells are excluded by the rule** — the smallest
+ceiling in the study is 0.088 (state Basin & Range). Notably, the expectation
+that Fruitful Rim would drop out was wrong in an informative way: it has the
+*highest* ceiling (0.787) — its transfer problem is a different local
+function, not an unpredictable region. Efficiency spans −15.6 (state B&R:
+achievable 0.088, delivered −1.36) to +0.90 (Clim-1), median +0.33.
+
+Regressing efficiency on the two distance measures (ceiling now in the
+denominator, no longer a predictor):
+
+| predictor | Pearson [CI], perm p | Spearman, perm p | without state/B&R | β [CI] |
+|---|---|---|---|---|
+| energy distance | −0.76 [−0.97, −0.04], p = 0.004 | −0.26, p = 0.25 | Pearson −0.29, Spearman −0.15 | −0.67 [−1.00, +0.09] |
+| Wasserstein yield | −0.48 [−0.84, +0.13], p = 0.053 | −0.35, p = 0.10 | Pearson −0.59, Spearman −0.27 | −0.24 [−0.81, +0.21] |
+
+**Outcome: no leverage-robust distance signal survives.** The energy-distance
+Pearson looks decisive (perm p = 0.004) but is manufactured by the single
+state/Basin & Range cell — the fold already known to be 30/31 counties
+mislabeled — which pairs the study's largest covariate distance (16.2) with
+its most extreme efficiency (−15.6, on the smallest retained ceiling). Remove
+that one cell and the correlation drops to −0.29; the rank correlation was
+never there (−0.26, p = 0.25); both multiple-regression CIs span zero; on
+seasonal features the Spearman is −0.04. Label Wasserstein is weaker at the
+point estimate but more leverage-stable (−0.48 with B&R, −0.59 without;
+Spearman −0.35, p = 0.10) — suggestive, short of significance. So the
+two-factor story ("ceiling sets what is achievable, distance explains the
+capture rate") is **not** supported: once intrinsic predictability is
+accounted for, neither climatic nor label-marginal distance carries robust
+signal about transfer success in this data. Distance-based transferability
+heuristics would not have worked here — and the one analysis cell that makes
+distance look predictive is itself an artifact of the incorrect partition,
+which is the paper's thesis in miniature.
+
+**3.4 A structural premise did not survive measurement.** The design assumed
 climate-clustered folds minimize covariate shift. They do not: mean energy
 distance is clim 4.32 vs ers 2.44 vs state 4.76. Holding out a compact climate
 cluster removes a whole neighborhood of feature space, so the fold's *distance
 to the pool* stays large even though the fold is internally homogeneous. What
 the three partitions actually provide is *variation* in covariate distance
-(0.48–16.2 across the 22 folds) — enough spread to test which shift measure
-predicts failure, which is the analysis that carries the argument below.
+(0.48–16.2 across the 22 folds) — the spread the regressions above rely on.
 
-**3.2 Which shift predicts transfer failure?** Response: `mlp_finetune` R² per
-fold (seed-averaged, monthly runs; n = 22). Bootstrap 95% CIs, 10k resamples:
+**3.5 Reading.** Transfer fails where the *local climate→yield function* is
+weak or different, not measurably because the climate is far away or the yield
+marginal is shifted:
 
-| predictor | univariate Pearson [CI] | Spearman | multiple-regression β [CI] |
-|---|---|---|---|
-| energy distance (covariate) | −0.68 [−0.89, +0.01] | −0.22 | −0.38 [−0.62, +0.03] |
-| Wasserstein yield (label) | −0.49 [−0.74, +0.14] | −0.28 | −0.20 [−0.48, +0.11] |
-| in-region ceiling (concept/intrinsic) | **+0.74 [+0.42, +0.89]** | +0.64 | **+0.51 [+0.30, +0.76]** |
-
-The in-region ceiling is the **only predictor whose CI excludes zero**, in the
-univariate and the multiple regression, on both feature sets (seasonal:
-r = +0.81, β = +0.75 [+0.55, +0.94]), and under the per-seed cluster bootstrap
-(n = 110 cells, resampled by region). The energy-distance correlation is
-point-large but outlier-leveraged: its Spearman is only −0.22, and it hinges on
-the two extreme-distance arid folds. Clim-6 is the clean counterexample —
-second-highest covariate distance (12.9) yet `mlp_finetune` −0.155 and
-local-only +0.131. Clipping R² at −2 changes nothing (no response cell is
-below it).
-
-**3.3 Reading.** Transfer fails where the *local climate→yield function* is
-weak or different, not where the climate is far away, and not primarily where
-the yield marginal is shifted:
-
-- **Adjei's label-shift bottleneck (arXiv 2605.08113) is not corroborated
-  here.** Label Wasserstein is the weakest predictor on every cut (β −0.20,
-  CI spans zero). This is a genuine disagreement with his Africa-LOCO
-  interpretation, on a different continent and benchmark — worth reporting as
-  such, not smoothing over.
+- **We do not corroborate the label-shift bottleneck reading of Adjei (arXiv
+  2605.08113) in our setting.** Label Wasserstein was the weakest predictor of
+  raw transfer R² on every cut (β −0.20 [−0.48, +0.11]) and short of
+  significance against efficiency (perm p = 0.053/0.10). n = 22 folds on one
+  crop and country cannot refute his Africa-LOCO interpretation; what it can
+  say is that label-marginal distance is not the binding constraint *here*.
 - **Concept shift is directly visible in the coefficients.** Mean off-diagonal
   cosine between per-region coefficient vectors is only 0.15 (state), 0.17
   (ers), 0.28 (clim). Prairie Gateway's coefficients are *anti-correlated*
-  with Heartland's (−0.52). Fruitful Rim is the smoking gun: in-region ceiling
-  0.79 (the most self-predictable region in the study) with coefficient cosine
-  ≈ 0 to every other region and to the pool (−0.01): the same climate features
-  predict its yields by a *different function* — consistent with irrigation
-  decoupling yield from precipitation. Zero-shot ridge scores −2.96 there
-  while 32 local labels score +0.74.
-- The ceiling result has an honest double meaning (see §5): a low ceiling can
-  be concept difference *or* irreducible local noise; the coefficient-cosine
-  evidence is what separates the two for the arid folds.
+  with Heartland's (−0.52). Fruitful Rim is the sharpest case: in-region
+  ceiling 0.79 (the most self-predictable region in the study) while its
+  coefficient vector bears **essentially no relationship** to the pool's
+  (cosine −0.01, i.e. orthogonal — not inverted): the same climate features
+  predict its yields by an unrelated function, consistent with irrigation
+  decoupling yield from rainfall. Zero-shot ridge scores −2.96 there while 32
+  local labels score +0.74.
+- A low ceiling can still be concept difference *or* irreducible local noise;
+  the coefficient-cosine evidence is what separates the two for the arid
+  folds (see §5).
+
+**Multiple-comparisons note.** Across §3.2–3.3 we report three predictors ×
+two dependent variables × two distance measures ≈ a dozen tests. Only the
+pre-specified headline chain — ceiling vs transfer (§3.2), then distance vs
+efficiency (§3.3) — is treated as confirmatory; everything else (MMD
+robustness, seasonal repeats, per-seed variants) is exploratory and is
+reported for transparency, not inference.
 
 ---
 
@@ -221,28 +284,37 @@ the yield marginal is shifted:
    −0.021 (1/5) under climate clusters, −0.011 (tie) under state.
 5. **FiLM climate conditioning helps in all six runs:** `ccpa` beats
    `ccpa_no_climate` by +0.07 to +0.17 macro R² everywhere.
-6. **Transfer failure is predicted by the held-out region's own
-   predictability, not by its climatic distance or yield-marginal distance:**
-   in-region ceiling r = +0.74 [+0.42, +0.89], β = +0.51 [+0.30, +0.76] — the
-   only CI excluding zero; label Wasserstein is weakest (β −0.20), so the
-   label-shift-as-bottleneck hypothesis is not corroborated on this benchmark.
-7. **Every partition contains an arid/irrigation-dominated fold where the
-   climate→yield mapping inverts** (coefficient cosine ≈ 0 or negative;
-   zero-shot ridge −31.7 / −2.96 / −2.49) while local labels work — direct
-   evidence that the binding constraint there is concept shift, not covariate
-   shift.
+6. **Transfer R² tracks the held-out region's own predictability** (in-region
+   ceiling r = +0.74 [+0.42, +0.89], perm p = 0.0001; β = +0.51 [+0.30,
+   +0.76]) — the only association that survives bootstrap and permutation,
+   subject to the shared-denominator caveat stated in §3.1.
+7. **Once the ceiling is divided out, no distance measure robustly predicts
+   transfer efficiency:** the energy-distance effect (−0.76 [−0.97, −0.04],
+   perm p = 0.004) collapses to −0.29 without the single mislabeled Basin &
+   Range cell (Spearman −0.26, p = 0.25); label Wasserstein stays suggestive
+   at best (−0.48 [−0.84, +0.13], p = 0.053) — so we do not corroborate the
+   label-shift bottleneck of Adjei (2605.08113) in this setting, and
+   distance-based transferability heuristics carry no robust signal here.
+8. **Every partition contains an arid/irrigation-dominated fold where the
+   learned climate→yield mapping bears essentially no relationship to the
+   pooled one** (coefficient cosine ≈ 0; zero-shot ridge −31.7 / −2.96 /
+   −2.49) while local labels work (`ridge_support_only` +0.13 to +0.74) —
+   direct evidence that the binding constraint there is concept shift, not
+   covariate shift.
 
 ## 5. What is weak or unresolved
 
 - **n = 22 folds** in the regression; CIs are wide and honest, but this is a
   correlational analysis over partially overlapping pools (the three
   partitions reuse the same 8,691 county-years), not 22 independent draws.
-- **The ceiling–transfer correlation partly reflects shared irreducible
-  noise:** a region with noisy yields depresses both its own CV R² and any
-  transfer R² measured on it. The coefficient-cosine evidence separates
-  "different function" from "noisy region" only for the arid folds; for
-  mid-ceiling regions the two are confounded. A variance-adjusted ceiling (or
-  year-held-out within-region CV) would tighten this.
+- **The efficiency ratio is unstable at small ceilings.** The pre-specified
+  exclusion floor (0.05) retains state Basin & Range (ceiling 0.088), whose
+  efficiency of −15.6 single-handedly produces the nominally significant
+  energy-distance Pearson in §3.3; a floor of 0.10 would exclude exactly that
+  cell and the distance signal would vanish outright. We report both readings
+  rather than tuning the threshold. Even after normalization, "different
+  function" vs "noisy region" is separated only by the coefficient-cosine
+  evidence, and only cleanly for the arid folds.
 - **The climate partition did not do what it was designed to do** (minimize
   fold↔pool covariate shift, §3.1). The regression rescues the argument, but
   a partition explicitly constructed to minimize pool distance (e.g., holding
@@ -264,6 +336,13 @@ the yield marginal is shifted:
   separate arm.
 - Single crop (corn), 2017–2022, climate-only features; none of this speaks
   to satellite-feature pipelines directly.
+
+**Future work (noted, deliberately out of scope for this freeze):**
+year-held-out within-region CV as a variance-adjusted ceiling; a partition of
+spatially scattered, climate-matched hold-outs to isolate covariate shift
+cleanly; widened hidden layers at 35 inputs (capacity arm); satellite/
+foundation-model features (Prithvi/Sentinel); an exact seven-region
+replication of Chakravarty's fold structure once their region list is known.
 
 ---
 

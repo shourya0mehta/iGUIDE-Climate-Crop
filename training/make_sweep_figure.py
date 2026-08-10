@@ -171,7 +171,22 @@ def main():
     ap.add_argument("--raw", default="results/sweep/sweep_raw.csv")
     ap.add_argument("--out", default="results/figures/")
     ap.add_argument("--suffix", default="")
+    ap.add_argument("--methods", default=None,
+                    help="comma-separated subset of swept methods to draw "
+                         "(paper figure uses ridge_support_only,ridge_refit,"
+                         "mlp_finetune,ccpa)")
+    ap.add_argument("--no-refs", action="store_true",
+                    help="omit the zero-support ridge/mlp reference lines")
     args = ap.parse_args()
+
+    global SERIES, REFS
+    if args.methods:
+        wanted = [m.strip() for m in args.methods.split(",")]
+        unknown = set(wanted) - {m for m, _, _, _ in SERIES}
+        assert not unknown, "unknown --methods: %s" % sorted(unknown)
+        SERIES = [s for s in SERIES if s[0] in wanted]
+    if args.no_refs:
+        REFS = []
 
     raw = pd.read_csv(args.raw)
     out = Path(args.out)
@@ -179,12 +194,12 @@ def main():
     n_seeds = raw["seed"].nunique()
 
     swept = raw[raw["support_size"] > 0]
-    ref_macro = raw[raw["support_size"] == 0] \
+    ref_macro = {} if args.no_refs else raw[raw["support_size"] == 0] \
         .groupby(["seed", "method"])["r2"].mean() \
         .groupby("method").mean().to_dict()
 
     # --- Main single-column figure -------------------------------------
-    fig, ax = plt.subplots(figsize=(3.5, 2.7), constrained_layout=True)
+    fig, ax = plt.subplots(figsize=(3.3, 2.7), constrained_layout=True)
     stats = macro_stats(swept)
     ends = draw_panel(ax, stats, ref_macro, zero_label=True, direct_labels=True)
     style_axis(ax)
@@ -210,7 +225,7 @@ def main():
 
     fig, axes = plt.subplots(2, 3, figsize=(7.0, 4.4), constrained_layout=True)
     for ax, (region, nq) in zip(axes.ravel(), regions.items()):
-        refs = ref_region.loc[region].to_dict()
+        refs = {} if args.no_refs else ref_region.loc[region].to_dict()
         rs = rstats[rstats["held_out_region"] == region]
         draw_panel(ax, rs, refs, lw=1.3, ms=3.0)
         style_axis(ax)

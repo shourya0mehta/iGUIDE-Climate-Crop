@@ -79,19 +79,24 @@ def fig_partition_heatmap(mac, out):
     norm = TwoSlopeNorm(vmin=-1.0, vcenter=0.0, vmax=0.5)
     short = {"state": "state-level\nFRR", "ers": "county\nERS",
              "clim": "climate\nclusters"}
-    fig, axes = plt.subplots(1, 2, figsize=(3.5, 3.0),
+    fig, axes = plt.subplots(1, 2, figsize=(3.3, 3.0),
                              gridspec_kw={"wspace": 0.10},
                              constrained_layout=False)
-    fig.subplots_adjust(left=0.34, right=0.985, top=0.82, bottom=0.16)
+    fig.subplots_adjust(left=0.345, right=0.985, top=0.80, bottom=0.17)
     for ax, f in zip(axes, FEATURE_SETS):
         piv = (mac[mac["features"] == f]
                .pivot(index="method", columns="partition", values="mean")
                .reindex(METHOD_ORDER)[PARTITIONS])
         M = np.clip(piv.values, -1.0, 0.5)
         ax.imshow(M, cmap=DIVERGING, norm=norm, aspect="auto")
-        annotate_cells(ax, piv.values, norm, DIVERGING, fontsize=6.0)
+        annotate_cells(ax, piv.values, norm, DIVERGING, fontsize=5.8)
+        # outline the best method per partition column: the instability mark
+        for j in range(piv.shape[1]):
+            i = int(np.nanargmax(piv.values[:, j]))
+            ax.add_patch(plt.Rectangle((j - 0.5, i - 0.5), 1, 1, fill=False,
+                                       edgecolor=TEXT_PRIMARY, linewidth=1.2))
         ax.set_xticks(range(len(PARTITIONS)))
-        ax.set_xticklabels([short[p] for p in PARTITIONS], fontsize=6.0)
+        ax.set_xticklabels([short[p] for p in PARTITIONS], fontsize=5.8)
         ax.set_yticks(range(len(METHOD_ORDER)))
         if ax is axes[0]:
             ax.set_yticklabels(METHOD_ORDER, fontsize=6.5)
@@ -103,7 +108,8 @@ def fig_partition_heatmap(mac, out):
             spine.set_visible(False)
         ax.tick_params(length=0)
     fig.suptitle("Macro R² by method × spatial partition", fontsize=8)
-    fig.text(0.34, 0.035, "cell color clipped to [−1, +0.5]; printed value is exact",
+    fig.text(0.345, 0.045, "boxed cell = best method in that partition\n"
+             "cell color clipped to [−1, +0.5]; printed value is exact",
              fontsize=5.6, color=TEXT_SECONDARY)
     save(fig, out, "partition_method_heatmap")
 
@@ -159,13 +165,64 @@ def fig_shift_scatter(cells, out):
     save(fig, out, "shift_vs_transfer")
 
 
+def fig_efficiency_scatter(out):
+    """Transfer efficiency vs covariate distance: the qualified-null figure.
+    Solid fit = all 22 cells (the reported regression); dashed = without the
+    single state/Basin & Range leverage cell. The off-scale B&R point is named
+    at the axis edge, never silently cropped."""
+    cells = pd.read_csv(REPO_ROOT / "results/shift/efficiency_cells.csv")
+    x = cells["energy_dist"].values
+    y = cells["efficiency"].values
+    fig, ax = plt.subplots(figsize=(3.3, 2.7), constrained_layout=True)
+    xs = np.linspace(x.min(), x.max(), 100)
+    b, a = np.polyfit(x, y, 1)
+    lo, hi = boot_band(x, y, xs)
+    ax.fill_between(xs, lo, hi, color="#b9b8b3", alpha=0.35, linewidth=0)
+    ax.plot(xs, a + b * xs, color=TEXT_SECONDARY, linewidth=1.2,
+            label="fit, all folds")
+    keep = y > y.min()   # drop the single extreme cell for the dashed fit
+    b2, a2 = np.polyfit(x[keep], y[keep], 1)
+    ax.plot(xs, a2 + b2 * xs, color=TEXT_SECONDARY, linewidth=1.0,
+            linestyle=(0, (4, 2.5)), label="fit, without state/B&R")
+    ylim = (-4.8, 1.35)
+    for p in PARTITIONS:
+        m = (cells["partition"] == p).values & keep
+        ax.scatter(x[m], y[m], s=16, color=PARTITION_COLORS[p],
+                   edgecolor="white", linewidth=0.5, zorder=4,
+                   label=PARTITION_LABELS[p])
+    i = int(np.argmin(y))
+    ax.scatter([x[i]], [ylim[0] + 0.18], s=22, marker="v",
+               color=PARTITION_COLORS[cells.iloc[i]["partition"]],
+               edgecolor="white", linewidth=0.5, zorder=4)
+    ax.annotate("state/Basin & Range: −15.6 (off scale)",
+                xy=(x[i], ylim[0] + 0.18), xytext=(-4, 7),
+                textcoords="offset points", ha="right", fontsize=5.8,
+                color=TEXT_SECONDARY)
+    ax.set_ylim(*ylim)
+    ax.axhline(0, color="#b9b8b3", linewidth=0.8, zorder=1)
+    ax.axhline(1, color="#b9b8b3", linewidth=0.6, linestyle=(0, (1.5, 2)),
+               zorder=1)
+    ax.annotate("efficiency 1 = matches in-region ceiling", xy=(0.02, 0.965),
+                xycoords="axes fraction", fontsize=5.8, style="italic",
+                color=TEXT_SECONDARY, va="top")
+    ax.grid(axis="y", color=GRID_COLOR, linewidth=0.5)
+    ax.set_axisbelow(True)
+    for side in ("top", "right"):
+        ax.spines[side].set_visible(False)
+    ax.set_xlabel("Energy distance to training pool (covariate shift)")
+    ax.set_ylabel("Transfer efficiency\n(mlp_finetune R² / ceiling R²)")
+    ax.legend(frameon=False, loc="lower left", fontsize=5.8,
+              handletextpad=0.4, labelspacing=0.3, borderaxespad=0.2)
+    save(fig, out, "efficiency_scatter")
+
+
 def fig_coef_cosine(out):
     mat = pd.read_csv(REPO_ROOT / "results/shift/coef_cosine_ers.csv",
                       index_col=0)
     order = mat.index.tolist()
     M = mat.values
     norm = TwoSlopeNorm(vmin=-1.0, vcenter=0.0, vmax=1.0)
-    fig, ax = plt.subplots(figsize=(3.5, 3.2), constrained_layout=True)
+    fig, ax = plt.subplots(figsize=(3.3, 3.1), constrained_layout=True)
     ax.imshow(M, cmap=DIVERGING, norm=norm)
     annotate_cells(ax, M, norm, DIVERGING, fontsize=5.8)
     short = {"Heartland": "Heartland", "Northern Crescent": "N.Crescent",
@@ -198,6 +255,7 @@ def main(argv=None):
 
     cells = pd.read_csv(REPO_ROOT / "results/shift/cells_monthly.csv")
     fig_shift_scatter(cells, out)
+    fig_efficiency_scatter(out)
     fig_coef_cosine(out)
 
 
