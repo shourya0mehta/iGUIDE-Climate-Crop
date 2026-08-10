@@ -26,7 +26,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import torch
-from sklearn.linear_model import Ridge
+from sklearn.linear_model import Ridge, RidgeCV
 from sklearn.metrics import r2_score
 from sklearn.preprocessing import StandardScaler
 
@@ -37,8 +37,8 @@ from models.baselines import TARGET_COL, REGION_COL  # noqa: E402
 from models.ccpa import CCPA, CCPANoClimate  # noqa: E402
 from training.loco_eval import (  # noqa: E402
     DISPLAY_NAMES, GRAD_CLIP, INNER_LR, INNER_STEPS_TRAIN, INNER_STEPS_TEST,
-    META_EPOCHS, OUTER_LR, QUERY_SIZE, RIDGE_ALPHA, finetune_mlp, load_data,
-    predict_torch, set_seed, train_mlp)
+    META_EPOCHS, OUTER_LR, QUERY_SIZE, RIDGE_ALPHA, RIDGE_CV_ALPHAS,
+    finetune_mlp, load_data, predict_torch, set_seed, train_mlp)
 from training.maml_trainer import meta_train, adapt_and_predict  # noqa: E402
 
 SUPPORT_SIZES = [8, 16, 32, 64]
@@ -56,8 +56,9 @@ def run_fold_sweep(df, features, held_out, fold_idx, seed, meta_epochs):
     train_df = df[df[REGION_COL] != held_out]
     test_df = df[df[REGION_COL] == held_out]
 
+    n_regions = df[REGION_COL].nunique()
     train_regions = set(train_df[REGION_COL].unique())
-    assert len(train_regions) == 5 and held_out not in train_regions, \
+    assert len(train_regions) == n_regions - 1 and held_out not in train_regions, \
         "fold %s: bad training-region set %s" % (held_out, train_regions)
 
     scaler = StandardScaler().fit(train_df[features].values)
@@ -80,9 +81,9 @@ def run_fold_sweep(df, features, held_out, fold_idx, seed, meta_epochs):
     X_qry = X_test[query_idx]
     y_qry_raw = y_test_raw[query_idx]
 
-    print("[seed %d | fold %d/6 | held-out %s] n_train=%d n_query=%d (fixed)"
-          % (seed, fold_idx + 1, held_out, len(train_df), len(query_idx)),
-          flush=True)
+    print("[seed %d | fold %d/%d | held-out %s] n_train=%d n_query=%d (fixed)"
+          % (seed, fold_idx + 1, n_regions, held_out, len(train_df),
+             len(query_idx)), flush=True)
 
     rows = []
     used_checksums = {}
@@ -111,7 +112,7 @@ def run_fold_sweep(df, features, held_out, fold_idx, seed, meta_epochs):
         yr = ((g[TARGET_COL].values - y_mu) / y_sd).astype(np.float32)
         region_tensors[r] = (torch.from_numpy(Xr), torch.from_numpy(yr))
     maml_regions = set(region_tensors)
-    assert len(maml_regions) == 5 and held_out not in maml_regions, \
+    assert len(maml_regions) == n_regions - 1 and held_out not in maml_regions, \
         "MAML training set for fold %s is wrong: %s" % (held_out, maml_regions)
 
     for s in SUPPORT_SIZES:
@@ -119,10 +120,12 @@ def run_fold_sweep(df, features, held_out, fold_idx, seed, meta_epochs):
         X_sup = X_test[support_idx]
         y_sup_z = ((y_test_raw[support_idx] - y_mu) / y_sd).astype(np.float32)
 
+        # alpha chosen by internal efficient-LOO CV on the fitting rows only
+        # (never on query); at s=8 this is the LOO CV the small-n case needs
         score("ridge_support_only", s,
-              Ridge(alpha=RIDGE_ALPHA).fit(X_sup, y_sup_z).predict(X_qry))
+              RidgeCV(alphas=RIDGE_CV_ALPHAS).fit(X_sup, y_sup_z).predict(X_qry))
         score("ridge_refit", s,
-              Ridge(alpha=RIDGE_ALPHA).fit(
+              RidgeCV(alphas=RIDGE_CV_ALPHAS).fit(
                   np.vstack([X_train, X_sup]),
                   np.concatenate([y_train_z, y_sup_z])).predict(X_qry))
         score("mlp_finetune", s,
@@ -190,7 +193,8 @@ def print_summary(summary, per_seed, region_order, n_seeds):
           "(MACRO = total):")
     print("  " + "  ".join("%s=%d" % (DISPLAY_NAMES.get(c, c), nq.loc[c])
                            for c in region_order + ["MACRO"]))
-    print("  (Basin & Range n_query=35: this region's sweep is noisy)")
+    if "Basin and Range" in region_order:
+        print("  (Basin & Range n_query=35: this region's sweep is noisy)")
 
     mac = summary[summary["held_out_region"] == "MACRO"]
     cells = [

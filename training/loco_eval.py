@@ -25,7 +25,7 @@ import pandas as pd
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
-from sklearn.linear_model import Ridge
+from sklearn.linear_model import Ridge, RidgeCV
 from sklearn.metrics import r2_score
 from sklearn.preprocessing import StandardScaler
 
@@ -46,6 +46,12 @@ INNER_STEPS_TEST = 10
 META_EPOCHS = 200
 GRAD_CLIP = 1.0
 RIDGE_ALPHA = 1.0
+# ridge_support_only / ridge_refit select their penalty by internal efficient
+# leave-one-out CV (sklearn RidgeCV default) on the fitting data only — never
+# on query rows. Fixed alpha=1.0 was far too weak at p=35 > n=8..32 and made
+# the local-only baseline collapse; the fixed-alpha runs are kept in
+# results/ as a robustness reference.
+RIDGE_CV_ALPHAS = np.logspace(-2, 4, 25)
 MLP_EPOCHS = 100
 MLP_LR = 1e-3
 MLP_BATCH = 64
@@ -57,9 +63,11 @@ METHOD_ORDER = ["ridge", "mlp", "ridge_support_only", "ridge_refit",
                 "mlp_finetune", "ccpa_no_climate", "ccpa"]
 
 # Feature columns are inferred: everything not in this list. Overridable
-# with --features for ad-hoc subsets.
+# with --features for ad-hoc subsets. All partition columns must be listed
+# so none of them can leak in as a feature.
 NON_FEATURE_COLS = ["fips", "state_name", "county_name", "year",
-                    "yield_bu_acre", "state", "region"]
+                    "yield_bu_acre", "state", "region", "region_ers",
+                    "region_clim"]
 
 DISPLAY_NAMES = {
     "Heartland": "Heartland",
@@ -68,6 +76,9 @@ DISPLAY_NAMES = {
     "Prairie Gateway": "Pr.Gateway",
     "Southern Seaboard": "S.Seaboard",
     "Basin and Range": "Basin&Range",
+    "Eastern Uplands": "E.Uplands",
+    "Mississippi Portal": "Miss.Portal",
+    "Fruitful Rim": "Fr.Rim",
     "MACRO": "MACRO",
 }
 
@@ -78,19 +89,21 @@ def set_seed(seed):
     torch.manual_seed(seed)
 
 
-def load_data(path, features_arg=None):
+def load_data(path, features_arg=None, region_col=REGION_COL):
     """Load the dataset and return (df, feature_cols).
 
     Features default to every column not in NON_FEATURE_COLS, in file order;
-    pass a comma-separated `features_arg` to override.
+    pass a comma-separated `features_arg` to override. `region_col` selects
+    the spatial partition used as the fold variable ('region', 'region_ers',
+    or 'region_clim').
     """
     p = Path(path)
     if not p.exists():
         sys.exit("error: data file not found: %s\n"
                  "Expected a master dataset with '%s' and '%s' columns."
-                 % (p.resolve(), TARGET_COL, REGION_COL))
+                 % (p.resolve(), TARGET_COL, region_col))
     df = pd.read_csv(p)
-    missing = [c for c in (TARGET_COL, REGION_COL) if c not in df.columns]
+    missing = [c for c in (TARGET_COL, region_col) if c not in df.columns]
     if missing:
         sys.exit("error: data file is missing columns: %s" % missing)
     if features_arg:
@@ -105,13 +118,13 @@ def load_data(path, features_arg=None):
     non_numeric = [c for c in features if not pd.api.types.is_numeric_dtype(df[c])]
     if non_numeric:
         sys.exit("error: non-numeric feature columns: %s" % non_numeric)
-    needed = features + [TARGET_COL, REGION_COL]
+    needed = features + [TARGET_COL, region_col]
     if df[needed].isna().any().any():
         sys.exit("error: nulls found in feature/target/region columns")
-    counts = df[REGION_COL].value_counts()
-    if len(counts) != 6:
-        sys.exit("error: expected 6 regions, found %d: %s"
-                 % (len(counts), list(counts.index)))
+    counts = df[region_col].value_counts()
+    if len(counts) < 3:
+        sys.exit("error: need at least 3 regions in '%s', found %d: %s"
+                 % (region_col, len(counts), list(counts.index)))
     if counts.min() <= SUPPORT_SIZE:
         sys.exit("error: smallest region (n=%d) does not exceed support size %d"
                  % (counts.min(), SUPPORT_SIZE))
@@ -158,7 +171,8 @@ def finetune_mlp(model, support_X, support_y):
     return tuned
 
 
-def run_fold(df, features, held_out, fold_idx, seed, meta_epochs):
+def run_fold(df, features, held_out, fold_idx, seed, meta_epochs,
+             region_col=REGION_COL):
     """Evaluate all seven methods on one (seed, held-out region) fold.
 
     Returns a list of result-row dicts (one per method).
@@ -166,12 +180,13 @@ def run_fold(df, features, held_out, fold_idx, seed, meta_epochs):
     t0 = time.time()
     set_seed(seed)
 
-    train_df = df[df[REGION_COL] != held_out]
-    test_df = df[df[REGION_COL] == held_out]
+    n_regions = df[region_col].nunique()
+    train_df = df[df[region_col] != held_out]
+    test_df = df[df[region_col] == held_out]
 
-    # --- Bug-1 guard: fold k trains on exactly the five regions that are not k
-    train_regions = set(train_df[REGION_COL].unique())
-    assert len(train_regions) == 5 and held_out not in train_regions, \
+    # --- Bug-1 guard: fold k trains on exactly the n-1 regions that are not k
+    train_regions = set(train_df[region_col].unique())
+    assert len(train_regions) == n_regions - 1 and held_out not in train_regions, \
         "fold %s: bad training-region set %s" % (held_out, train_regions)
 
     # --- Bug-2 guard: scaler and target stats fit on training regions only
@@ -198,9 +213,9 @@ def run_fold(df, features, held_out, fold_idx, seed, meta_epochs):
     X_qry = X_test[query_idx]
     y_qry_raw = y_test_raw[query_idx]
 
-    print("[seed %d | fold %d/6 | held-out %s] n_train=%d n_support=%d n_query=%d"
-          % (seed, fold_idx + 1, held_out, len(train_df), len(support_idx),
-             len(query_idx)), flush=True)
+    print("[seed %d | fold %d/%d | held-out %s] n_train=%d n_support=%d n_query=%d"
+          % (seed, fold_idx + 1, n_regions, held_out, len(train_df),
+             len(support_idx), len(query_idx)), flush=True)
 
     rows = []
     used_checksums = {}
@@ -224,12 +239,13 @@ def run_fold(df, features, held_out, fold_idx, seed, meta_epochs):
     mlp = train_mlp(X_train, y_train_z, seed)
     score("mlp", predict_torch(mlp, X_qry), query_idx)
 
-    # 3. ridge_support_only: the 32 support rows only
-    ridge_sup = Ridge(alpha=RIDGE_ALPHA).fit(X_sup, y_sup_z)
+    # 3. ridge_support_only: the 32 support rows only; alpha by internal
+    # efficient-LOO CV on the support rows themselves (never on query)
+    ridge_sup = RidgeCV(alphas=RIDGE_CV_ALPHAS).fit(X_sup, y_sup_z)
     score("ridge_support_only", ridge_sup.predict(X_qry), query_idx)
 
-    # 4. ridge_refit: train regions + support rows
-    ridge_refit = Ridge(alpha=RIDGE_ALPHA).fit(
+    # 4. ridge_refit: train regions + support rows, alpha by internal CV
+    ridge_refit = RidgeCV(alphas=RIDGE_CV_ALPHAS).fit(
         np.vstack([X_train, X_sup]), np.concatenate([y_train_z, y_sup_z]))
     score("ridge_refit", ridge_refit.predict(X_qry), query_idx)
 
@@ -239,12 +255,12 @@ def run_fold(df, features, held_out, fold_idx, seed, meta_epochs):
 
     # 6-7. MAML-trained CCPA ablation and full CCPA
     region_tensors = {}
-    for r, g in train_df.groupby(REGION_COL):
+    for r, g in train_df.groupby(region_col):
         Xr = scaler.transform(g[features].values).astype(np.float32)
         yr = ((g[TARGET_COL].values - y_mu) / y_sd).astype(np.float32)
         region_tensors[r] = (torch.from_numpy(Xr), torch.from_numpy(yr))
     maml_regions = set(region_tensors)
-    assert len(maml_regions) == 5 and held_out not in maml_regions, \
+    assert len(maml_regions) == n_regions - 1 and held_out not in maml_regions, \
         "MAML training set for fold %s is wrong: %s" % (held_out, maml_regions)
 
     for method, model_cls in [("ccpa_no_climate", CCPANoClimate), ("ccpa", CCPA)]:
@@ -347,13 +363,19 @@ def main(argv=None):
     ap.add_argument("--features", default=None,
                     help="comma-separated feature columns; default: every column "
                          "not in %s" % NON_FEATURE_COLS)
+    ap.add_argument("--region-col", default=REGION_COL,
+                    help="partition column to fold on: region (state-level FRR "
+                         "approximation), region_ers (county-level ERS), or "
+                         "region_clim (climate clusters); default %s" % REGION_COL)
     args = ap.parse_args(argv)
 
-    df, features = load_data(args.data, args.features)
+    df, features = load_data(args.data, args.features, args.region_col)
     print("features (%d): %s" % (len(features),
           ", ".join(features) if len(features) <= 8
           else ", ".join(features[:6]) + ", ... +%d more" % (len(features) - 6)))
-    region_order = df[REGION_COL].value_counts().index.tolist()  # largest first
+    print("partition column: %s (%d regions)"
+          % (args.region_col, df[args.region_col].nunique()))
+    region_order = df[args.region_col].value_counts().index.tolist()  # largest first
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -362,7 +384,7 @@ def main(argv=None):
     for seed in args.seeds:
         for fold_idx, held_out in enumerate(region_order):
             rows.extend(run_fold(df, features, held_out, fold_idx, seed,
-                                 args.meta_epochs))
+                                 args.meta_epochs, region_col=args.region_col))
 
     raw = pd.DataFrame(rows, columns=["seed", "held_out_region", "method",
                                       "r2", "rmse", "n_query"])
