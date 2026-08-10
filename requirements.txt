@@ -1,7 +1,7 @@
-torch
-learn2learn==0.2.0
-scikit-learn
-pandas
+# Analysis / reproduction dependencies (Table 1, figures, shift analyses).
+# Works on Python 3.9+. Training extras are in requirements-train.txt.
 numpy
-requests
+pandas
+scipy
+scikit-learn
 matplotlib
