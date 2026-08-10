@@ -77,28 +77,34 @@ def annotate_cells(ax, M, norm, cmap, fmt="%+.2f", fontsize=6.2):
 
 def fig_partition_heatmap(mac, out):
     norm = TwoSlopeNorm(vmin=-1.0, vcenter=0.0, vmax=0.5)
-    fig, axes = plt.subplots(1, 2, figsize=(3.5, 2.6), constrained_layout=True)
+    short = {"state": "state-level\nFRR", "ers": "county\nERS",
+             "clim": "climate\nclusters"}
+    fig, axes = plt.subplots(1, 2, figsize=(3.5, 3.0),
+                             gridspec_kw={"wspace": 0.10},
+                             constrained_layout=False)
+    fig.subplots_adjust(left=0.34, right=0.985, top=0.82, bottom=0.16)
     for ax, f in zip(axes, FEATURE_SETS):
         piv = (mac[mac["features"] == f]
                .pivot(index="method", columns="partition", values="mean")
                .reindex(METHOD_ORDER)[PARTITIONS])
         M = np.clip(piv.values, -1.0, 0.5)
         ax.imshow(M, cmap=DIVERGING, norm=norm, aspect="auto")
-        annotate_cells(ax, piv.values, norm, DIVERGING)
+        annotate_cells(ax, piv.values, norm, DIVERGING, fontsize=6.0)
         ax.set_xticks(range(len(PARTITIONS)))
-        ax.set_xticklabels([PARTITION_LABELS[p].replace(" ", "\n")
-                            for p in PARTITIONS], fontsize=6.2)
+        ax.set_xticklabels([short[p] for p in PARTITIONS], fontsize=6.0)
         ax.set_yticks(range(len(METHOD_ORDER)))
-        ax.set_yticklabels(METHOD_ORDER if ax is axes[0] else [])
-        ax.set_title("%s (%d features)"
+        if ax is axes[0]:
+            ax.set_yticklabels(METHOD_ORDER, fontsize=6.5)
+        else:
+            ax.set_yticklabels([])
+        ax.set_title("%s (%d feat.)"
                      % (f, 5 if f == "seasonal" else 35), fontsize=7.5)
         for spine in ax.spines.values():
             spine.set_visible(False)
         ax.tick_params(length=0)
-    fig.suptitle("Macro R² by method × spatial partition", fontsize=8, y=1.04)
-    axes[0].annotate("cell color clipped to [−1, +0.5]; printed value is exact",
-                     xy=(0, -0.16), xycoords="axes fraction", fontsize=5.6,
-                     color=TEXT_SECONDARY)
+    fig.suptitle("Macro R² by method × spatial partition", fontsize=8)
+    fig.text(0.34, 0.035, "cell color clipped to [−1, +0.5]; printed value is exact",
+             fontsize=5.6, color=TEXT_SECONDARY)
     save(fig, out, "partition_method_heatmap")
 
 
@@ -145,7 +151,7 @@ def fig_shift_scatter(cells, out):
         r = np.corrcoef(x, y)[0, 1]
         ax.annotate("r = %+.2f" % r, xy=(0.98, 0.06), xycoords="axes fraction",
                     ha="right", fontsize=7, color=TEXT_PRIMARY)
-    axes[0].legend(frameon=False, loc="lower right", handletextpad=0.1,
+    axes[0].legend(frameon=False, loc="upper right", handletextpad=0.1,
                    borderaxespad=0.2)
     fig.suptitle("Which shift predicts transfer failure?\n"
                  "(one point = one held-out fold, seed-averaged, "
