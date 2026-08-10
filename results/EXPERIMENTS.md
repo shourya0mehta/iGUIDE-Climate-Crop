@@ -1,5 +1,22 @@
 # Monthly features + support-size sweep
 
+> **SUPERSEDED IN PART (2026-08-10) — read results/FINDINGS.md first.**
+> Every `ridge_support_only` and `ridge_refit` number in this file was
+> computed with a fixed `Ridge(alpha=1.0)`, which at p=35 features and
+> n=8–32 support rows is far too weak a penalty; the local-only baseline
+> numbers here are artifacts of under-regularization, not evidence about
+> transfer. With the penalty chosen by internal leave-one-out CV
+> (`RidgeCV`, results/sweep_monthly_cv/, results/partitions/),
+> `ridge_support_only` at s=32 on monthly features moves from −0.161 to
+> **+0.009** and wins at every support size, so **the headline claim below
+> ("transfer wins when local labels are scarce, crossover around 32–64")
+> does not survive**. The fixed-alpha numbers are retained below and at
+> results/monthly/, results/sweep/, results/sweep_monthly/ as a robustness
+> reference only. Non-ridge numbers (mlp*, ccpa*) are unaffected. The
+> state-level `region` partition used throughout this file assigns whole
+> states to Farm Resource Regions; the county-level correction and the
+> partition-sensitivity experiment are in results/FINDINGS.md.
+
 Both experiments reuse the corrected LOCO harness unchanged: same protocol, same
 leakage guards (all active and passing), same method definitions, same
 hyperparameters. Only the feature set (Exp 1) and support size (Exp 2) vary.
